@@ -1,0 +1,66 @@
+identity:
+  author: "zhaozhen"
+  name: "xunfei-mandarin-asr-translate"
+  label:
+    en_US: "xunfei-mandarin-asr-translate"
+    zh_Hans: "讯飞多语种语音识别大模型翻译"
+    pt_BR: "xunfei-mandarin-asr-translate"
+  description:
+    en_US: "xunfei multilingual language recognition translation"
+    zh_Hans: "使用讯飞多语种语音识别大模型进行语音识别和机器翻译niutrans"
+    pt_BR: "xunfei multilingual language recognition translation"
+  icon: "icon.svg"
+tools:
+  - tools/xunfei-mandarin-asr-translate.yaml
+extra:
+  python:
+    source: provider/xunfei-mandarin-asr-translate.py
+credentials_for_provider:
+  app_id: # 这是凭证的内部名称，将在 Python 代码中使用
+    type: text-input # 输入类型为应用选择器
+    required: true # 此凭证是必需的
+    label: # 在 Dify UI 中显示的标签 (支持多语言)
+      zh_Hans: 讯飞开放平台获取应用 App ID
+      en_US: Xunfei Open Platform App ID
+      # ... (其他语言)
+    placeholder: # 输入框的提示文字 (支持多语言)
+      zh_Hans: 请输入您的讯飞开放平台获取应用 App ID
+      en_US: Please enter your Xunfei Open Platform App ID
+      # ... (其他语言)
+    help: # 帮助提示信息 (支持多语言)
+      zh_Hans: 从讯飞开放平台获取 App ID
+      en_US: Get App ID from Xunfei Open Platform
+      # ... (其他语言)
+    url: https://console.xfyun.cn/app/myapp # 点击帮助提示时跳转的 URL
+  api_secret:  
+    type: secret-input # 输入类型为密码框
+    required: true # 此凭证是必需的
+    label: # 在 Dify UI 中显示的标签 (支持多语言)
+      zh_Hans: 讯飞开放平台获取应用 API Secret
+      en_US: Xunfei Open Platform API Secret
+      # ... (其他语言)
+    placeholder: # 输入框的提示文字 (支持多语言)
+      zh_Hans: 请输入您的讯飞开放平台获取应用 API Secret
+      en_US: Please enter your Xunfei Open Platform API Secret
+      # ... (其他语言)
+    help: # 帮助提示信息 (支持多语言)
+      zh_Hans: 从讯飞开放平台获取应用 API Secret
+      en_US: Get API Secret from Xunfei Open Platform
+      # ... (其他语言)
+    url: https://console.xfyun.cn/app/myapp # 点击帮助提示时跳转的 URL
+  api_key:  
+    type: secret-input # 输入类型为密码框
+    required: true # 此凭证是必需的
+    label: # 在 Dify UI 中显示的标签 (支持多语言)
+      zh_Hans: 讯飞开放平台获取应用 API Key
+      en_US: Xunfei Open Platform API Key
+      # ... (其他语言)
+    placeholder: # 输入框的提示文字 (支持多语言)
+      zh_Hans: 请输入您的讯飞开放平台获取应用 API Key
+      en_US: Please enter your Xunfei Open Platform API Key
+      # ... (其他语言)
+    help: # 帮助提示信息 (支持多语言)
+      zh_Hans: 从讯飞开放平台获取 API Key
+      en_US: Get API Key from Xunfei Open Platform
+      # ... (其他语言)
+    url: https://console.xfyun.cn/app/myapp # 点击帮助提示时跳转的 URL

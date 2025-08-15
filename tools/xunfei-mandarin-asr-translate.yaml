@@ -1,0 +1,67 @@
+identity:
+  name: "xunfei-mandarin-asr-translate"
+  author: "zhaozhen"
+  label:
+    en_US: "xunfei-mandarin-asr-translate"
+    zh_Hans: "讯飞多语种语音识别大模型翻译"
+    pt_BR: "xunfei-mandarin-asr-translate"
+description:
+  human:
+    en_US: "xunfei multilingual language recognition translation"
+    zh_Hans: "使用讯飞多语种语音识别大模型进行语音识别和机器翻译niutrans"
+    pt_BR: "xunfei multilingual language recognition translation"
+  llm: "xunfei multilingual language recognition translation"
+parameters:
+  - name: file_url
+    type: string
+    required: true
+    label:
+      en_US: Audio file URL
+      zh_Hans: 音频文件链接
+      pt_BR: URL do arquivo de áudio
+    human_description:
+      zh_Hans: "服务不支持本地音视频文件直传，输入源需为可通过公网访问的文件URL（支持HTTP/HTTPS协议，示例：https://your-domain.com/file.mp3）。音频格式：mp3、pcm、wav。"
+      en_US: "The service does not support direct upload of local audio/video files. The input source must be a publicly accessible file URL (supports HTTP/HTTPS protocol, e.g., https://your-domain.com/file.mp3). Supported audio formats: aac, amr, avi, flac, flv, m4a, mkv, mov, mp3, mp4, mpeg, ogg, opus, wav, webm, wma, wmv."
+      pt_BR: "O serviço não suporta o upload direto de arquivos de áudio/vídeo locais. A fonte de entrada deve ser uma URL de arquivo acessível publicamente (suporta protocolo HTTP/HTTPS, por exemplo, https://your-domain.com/file.mp3). Formatos de áudio suportados: aac, amr, avi, flac, flv, m4a, mkv, mov, mp3, mp4, mpeg, ogg, opus, wav, webm, wma, wmv."
+    llm_description: "Use xunfei mandarin asr translate"
+    form: llm
+  - name: audio_language
+    type: string
+    required: true
+    label:
+      en_US: Audio language
+      zh_Hans: 音频语言
+      pt_BR: Idioma do áudio
+    human_description:
+      zh_Hans: "音频语言，支持中文、英语、藏语、维语、蒙语等多种语言。"
+      en_US: "Audio language, supports multiple languages including Mandarin Chinese, English, Cantonese, etc."
+      pt_BR: "Idioma do áudio, suporta muitos idiomas, incluindo chinês mandarim, inglês, cantonese, etc."
+    llm_description: "Use xunfei mandarin asr translate"
+    form: llm
+output_schema:
+  type: object
+  properties:
+    result:
+      type: object
+      label:
+        en_US: Transcription Result
+        zh_Hans: 讯飞多语种语音识别大模型翻译结果数据
+      properties:
+        transcription_text:
+          type: string
+          label:
+            en_US: Transcription text
+            zh_Hans: 讯飞多语种语音识别大模型翻译文本
+        transcription:
+          type: object
+          label:
+            en_US: Transcription
+            zh_Hans: 录音文本结果
+        transcription_error_message:
+          type: string
+          label:
+            en_US: Transcription error message
+            zh_Hans: 录音转换错误信息
+extra:
+  python:
+    source: tools/xunfei-mandarin-asr-translate.py
