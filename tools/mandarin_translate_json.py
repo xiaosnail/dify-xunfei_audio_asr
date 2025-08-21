@@ -50,6 +50,7 @@ class TranslationResult:
         self.transcription_error_message = ""
 
 
+# 翻译API类
 class TranslationAPI(object):
     def __init__(self, host: str):
         self.transcription_error_message = ""
@@ -236,78 +237,292 @@ class TranslationAPI(object):
 
 def translate_text(segments: List[Dict[str, Any]]) -> Optional[Dict[int, str]]:
     """
-    翻译文本段落
+    翻译文本段落 - 优化批量翻译方案
     :param segments: 语义段落列表
     :return: 每个段落的翻译结果字典
     """
-    # 检测输入
     if not segments:
         return None
 
     print(f"\n开始翻译 {len(segments)} 个语义单元")
 
-    # 为每个句子添加唯一标记
-    marked_text = ""
-    for segment in segments:
-        # 使用特殊标记格式，确保翻译后能准确分割
-        marker = f"[XF_SEGMENT_{segment['id']}]"
-        marked_text += f"{marker}{segment['text']}"
+    # 方案1：使用更稳定的分隔符
+    separator = " @@SEP@@ "  # 使用不太可能出现在自然语言中的分隔符
+    combined_text = separator.join([segment["text"] for segment in segments])
 
-    # 拼接带标记的文本进行翻译
-    host = "ntrans.xfyun.cn"
-    translation_result = TranslationResult()
+    print(f"待翻译文本: {combined_text}")
 
     try:
+        host = "ntrans.xfyun.cn"
+        translator = TranslationAPI(host)
+        translator.Text = combined_text
+        full_translation = translator.call_url()
+
+        if translator.transcription_error_message:
+            raise Exception(translator.transcription_error_message)
+
+        if not full_translation:
+            raise Exception("翻译失败，无法获取翻译结果")
+
+        print(f"翻译结果: {full_translation}")
+
+        # 尝试按分隔符分割
+        translated_segments = full_translation.split("@@SEP@@")
+
+        # 如果分隔符被保留，直接使用分割结果
+        if len(translated_segments) == len(segments):
+            segment_translations = {}
+            for i, segment in enumerate(segments):
+                segment_translations[segment["id"]] = translated_segments[i].strip()
+            print("成功使用分隔符分割翻译结果")
+            return segment_translations
+
+        # 如果分隔符被移除，使用智能分割
+        return smart_split_translation(segments, full_translation)
+
+    except Exception as e:
+        error_msg = f"批量翻译失败: {str(e)}"
+        print(error_msg)
+        raise Exception(error_msg)
+
+
+# 智能分割翻译结果 - 当分隔符被移除时使用
+def smart_split_translation(
+    segments: List[Dict[str, Any]], full_translation: str
+) -> Dict[int, str]:
+    print("分隔符被移除，使用智能分割算法")
+
+    segment_translations = {}
+
+    # 方法1：基于字符数比例分割
+    total_original_chars = sum(len(seg["text"]) for seg in segments)
+
+    if total_original_chars == 0:
+        # 如果原文为空，平均分配
+        avg_length = len(full_translation) // len(segments)
+        for i, segment in enumerate(segments):
+            start_pos = i * avg_length
+            end_pos = (
+                (i + 1) * avg_length if i < len(segments) - 1 else len(full_translation)
+            )
+            segment_translations[segment["id"]] = full_translation[
+                start_pos:end_pos
+            ].strip()
+        return segment_translations
+
+    # 基于原文长度比例分配翻译结果
+    current_pos = 0
+    for i, segment in enumerate(segments):
+        if i == len(segments) - 1:
+            # 最后一个段落，取剩余所有内容
+            segment_translation = full_translation[current_pos:].strip()
+        else:
+            # 计算当前段落应该占用的翻译长度
+            segment_ratio = len(segment["text"]) / total_original_chars
+            segment_length = int(len(full_translation) * segment_ratio)
+
+            # 寻找合适的分割点（避免在词的中间分割）
+            target_pos = current_pos + segment_length
+
+            # 向前或向后寻找空格、标点符号等自然分割点
+            best_split_pos = find_best_split_position(
+                full_translation, target_pos, current_pos
+            )
+            segment_translation = full_translation[current_pos:best_split_pos].strip()
+            current_pos = best_split_pos
+
+        segment_translations[segment["id"]] = (
+            segment_translation if segment_translation else segment["text"]
+        )
+        print(
+            f"智能分割 - 段落 {segment['id']}: '{segment['text']}' -> '{segment_translations[segment['id']]}'"
+        )
+    return segment_translations
+
+
+# 寻找最佳的文本分割位置
+def find_best_split_position(text: str, target_pos: int, min_pos: int) -> int:
+    if target_pos >= len(text):
+        return len(text)
+
+    if target_pos <= min_pos:
+        return min_pos
+
+    # 定义分割点的优先级（从高到低）
+    split_chars = ["。", "！", "？", "，", "；", "：", " ", "、"]
+
+    # 在目标位置附近搜索最佳分割点（搜索范围：前后5个字符）
+    search_range = 5
+
+    for offset in range(search_range + 1):
+        # 先向后搜索
+        pos = target_pos + offset
+        if pos < len(text) and text[pos] in split_chars:
+            return pos + 1  # 在分割字符后分割
+
+        # 再向前搜索
+        if offset > 0:
+            pos = target_pos - offset
+            if pos > min_pos and text[pos] in split_chars:
+                return pos + 1
+
+    # 如果找不到合适的分割点，直接使用目标位置
+    return target_pos
+
+
+# 使用增强标记的翻译方案 - 备选方案
+def translate_text_with_enhanced_markers(
+    segments: List[Dict[str, Any]],
+) -> Optional[Dict[int, str]]:
+    if not segments:
+        return None
+
+    print(f"\n开始翻译 {len(segments)} 个语义单元（增强标记方案）")
+
+    # 使用增强标记的翻译方案
+    marked_text = ""
+    for segment in segments:
+        # 使用简单的中文标记，翻译系统更容易保留
+        marker = f"【{segment['id']}】"
+        marked_text += f"{marker}{segment['text']}{marker}"
+
+    print(f"待翻译文本（增强标记）: {marked_text}")
+
+    try:
+        host = "ntrans.xfyun.cn"
         translator = TranslationAPI(host)
         translator.Text = marked_text
         full_translation = translator.call_url()
 
-        # 检查是否有错误信息
         if translator.transcription_error_message:
-            translation_result.transcription_error_message = (
-                translator.transcription_error_message
+            raise Exception(translator.transcription_error_message)
+
+        if not full_translation:
+            raise Exception("翻译失败，无法获取翻译结果")
+
+        print(f"翻译结果（增强标记）: {full_translation}")
+
+        # 尝试提取标记分割的结果
+        segment_translations = {}
+
+        for segment in segments:
+            segment_id = segment["id"]
+            start_marker = f"【{segment_id}】"
+
+            # 查找第一个标记位置
+            first_marker_pos = full_translation.find(start_marker)
+            if first_marker_pos == -1:
+                print(f"未找到段落 {segment_id} 的起始标记")
+                segment_translations[segment_id] = segment["text"]
+                continue
+
+            # 查找第二个相同标记的位置（结束标记）
+            second_marker_pos = full_translation.find(
+                start_marker, first_marker_pos + len(start_marker)
             )
-            raise Exception(translation_result.transcription_error_message)
+            if second_marker_pos == -1:
+                print(f"未找到段落 {segment_id} 的结束标记")
+                segment_translations[segment_id] = segment["text"]
+                continue
+
+            # 提取两个标记之间的内容
+            start_pos = first_marker_pos + len(start_marker)
+            translation = full_translation[start_pos:second_marker_pos].strip()
+
+            segment_translations[segment_id] = (
+                translation if translation else segment["text"]
+            )
+            print(f"成功提取段落 {segment_id}: '{segment['text']}' -> '{translation}'")
+
+        # 验证是否所有段落都有翻译结果
+        if len(segment_translations) == len(segments):
+
+            return segment_translations
+        else:
+            print("标记提取不完整，回退到智能分割")
+            # 清理标记后使用智能分割
+            clean_translation = clean_markers_from_translation(full_translation)
+            return smart_split_translation(segments, clean_translation)
 
     except Exception as e:
-        error_msg = f"翻译API调用失败: {str(e)}"
+        error_msg = f"增强标记翻译失败: {str(e)}"
         print(error_msg)
-        translation_result.transcription_error_message = error_msg
-        raise Exception(translation_result.transcription_error_message)
-
-    if not full_translation:
-        error_msg = "翻译失败，无法获取翻译结果"
-        print(error_msg)
-        translation_result.transcription_error_message = error_msg
-        raise Exception(translation_result.transcription_error_message)
-
-    # 提取每个标记点的翻译结果
-    segment_translations = {}
-
-    # 修复原代码中的逻辑错误：原代码中for循环内部变量作用域问题
-    for segment in segments:
-        marker = f"[XF_SEGMENT_{segment['id']}]"
-        start_pos = full_translation.find(marker)
-
-        if start_pos != -1:
-            # 找到下一个标记或文本末尾
-            next_marker = f"[XF_SEGMENT_{segment['id']+1}]"
-            end_pos = full_translation.find(next_marker, start_pos)
-
-            if end_pos == -1:
-                end_pos = len(full_translation)
-
-            # 提取翻译文本（去除标记）
-            translation = full_translation[start_pos + len(marker) : end_pos].strip()
-            segment_translations[segment["id"]] = translation
-        else:
-            # 如果找不到标记，使用原文
-            segment_translations[segment["id"]] = segment["text"]
-
-    translation_result.segment_translations = segment_translations
-    return segment_translations
+        raise Exception(error_msg)
 
 
+# 清理翻译结果中的所有标记
+def clean_markers_from_translation(translation: str) -> str:
+    import re
+
+    # 移除所有【数字】格式的标记
+    clean_text = re.sub(r"【\d+】", "", translation)
+    # 移除多余空格
+    clean_text = re.sub(r"\s+", " ", clean_text).strip()
+    return clean_text
+
+
+# 推荐的最终解决方案：结合多种策略
+def translate_text_robust(segments: List[Dict[str, Any]]) -> Optional[Dict[int, str]]:
+    """
+    结合多种翻译分割对应策略
+    """
+    if not segments:
+        return None
+
+    # 如果只有1个段落，直接翻译
+    if len(segments) == 1:
+        try:
+            host = "ntrans.xfyun.cn"
+            translator = TranslationAPI(host)
+            translator.Text = segments[0]["text"]
+            translation = translator.call_url()
+
+            if translation and not translator.transcription_error_message:
+                return {segments[0]["id"]: translation}
+        except:
+            pass
+        return {segments[0]["id"]: segments[0]["text"]}
+
+    # 多段落情况：依次尝试不同策略
+    strategies = [
+        ("增强标记", lambda: translate_text_with_enhanced_markers(segments)),
+        ("智能分割", lambda: translate_and_smart_split(segments)),
+    ]
+
+    for strategy_name, strategy_func in strategies:
+        try:
+            print(f"尝试策略: {strategy_name}")
+            result = strategy_func()
+            if result and len(result) == len(segments):
+                # 验证翻译质量：如果所有结果都是原文，说明翻译失败
+                if not all(result[seg["id"]] == seg["text"] for seg in segments):
+                    print(f"策略 {strategy_name} 成功")
+                    return result
+        except Exception as e:
+            print(f"策略 {strategy_name} 失败: {str(e)}")
+            continue
+
+    # 所有策略都失败，返回原文
+    print("所有翻译策略都失败，返回原文")
+    return {segment["id"]: segment["text"] for segment in segments}
+
+
+# 直接翻译整段文本然后智能分割
+def translate_and_smart_split(segments: List[Dict[str, Any]]) -> Dict[int, str]:
+    combined_text = "".join([segment["text"] for segment in segments])
+
+    host = "ntrans.xfyun.cn"
+    translator = TranslationAPI(host)
+    translator.Text = combined_text
+    full_translation = translator.call_url()
+
+    if not full_translation or translator.transcription_error_message:
+        raise Exception(translator.transcription_error_message or "翻译失败")
+
+    return smart_split_translation(segments, full_translation)
+
+
+# 创建包含句子级翻译的JSON结果
 def create_json_result(
     audio_file: str,
     recognized_text: str,
@@ -316,9 +531,6 @@ def create_json_result(
     word_details: List[Dict[str, Any]],
     segment_translations: Dict[int, str],
 ) -> str:
-    """
-    创建包含句子级翻译的JSON结果
-    """
     # 获取安全的文件名
     # file_name = get_safe_filename(audio_file)
 
@@ -328,6 +540,7 @@ def create_json_result(
     for i, segment in enumerate(segments):
         # 获取翻译
         translation = segment_translations.get(segment["id"], "")
+        print(f"处理第 {i + 1} 个片段: {segment['text']} -> 翻译: {translation}")
 
         # 提取词级信息（如果可用）
         words = []
@@ -393,6 +606,7 @@ def create_json_result(
         total_duration = len(recognized_text) * 200
 
     print(f"总时长计算结果: {total_duration} 毫秒")
+    print(f"传过来的翻译: {full_translation}")
 
     # 构造JSON结构
     result = {
@@ -424,6 +638,9 @@ def create_json_result(
     return result
 
 
+# 获取安全的文件名（去除特殊字符）
+# :param file_path: 文件路径或URL
+#:return: 安全的文件名
 def get_safe_filename(file_path: str) -> str:
     """
     从文件路径获取安全的文件名（去除特殊字符）

@@ -8,7 +8,8 @@ from dify_plugin.entities.tool import ToolInvokeMessage
 from tools.mandarin_asr import speech_to_text
 from tools.mandarin_translate_json import (
     set_credentials,
-    translate_text,
+    # translate_text,
+    translate_text_robust,
     create_json_result,
 )
 
@@ -39,7 +40,10 @@ def xunfei_mandarin_asr_translate(audio_file: str, language: str = "none") -> tu
 
     # 执行文本翻译
     try:
-        segment_translations = translate_text(recognition_result.semantic_segments)
+        # segment_translations = translate_text(recognition_result.semantic_segments)
+        segment_translations = translate_text_robust(
+            recognition_result.semantic_segments
+        )
     except Exception as e:
         segment_translations = {}
         return "", {}, f"文本翻译失败: {str(e)}"
