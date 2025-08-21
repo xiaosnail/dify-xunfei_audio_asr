@@ -1,6 +1,6 @@
 ## xunfei-mandarin-asr-translate
 
-**Author:** zhaozhen
+**Author:** xiaosnail
 **Version:** 0.0.1
 **Type:** tool
 
