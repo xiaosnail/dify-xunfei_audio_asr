@@ -211,7 +211,7 @@ class TranslationAPI(object):
                 else:
                     # 鉴权成功
                     respData = json.loads(response.text)
-                    print("翻译结果:", respData)
+                    print("翻译结果返回:", respData)
                     # 以下仅用于调试
                     code = str(respData["code"])
                     if code != "0":
@@ -259,6 +259,7 @@ def translate_text(segments: List[Dict[str, Any]]) -> Optional[Dict[int, str]]:
     translation_result = TranslationResult()
 
     print(f"待翻译文本: {marked_text}")
+    print(f"----")
     try:
         translator = TranslationAPI(host)
         translator.Text = marked_text
@@ -301,12 +302,15 @@ def translate_text(segments: List[Dict[str, Any]]) -> Optional[Dict[int, str]]:
 
             # 提取翻译文本（去除标记）
             translation = full_translation[start_pos + len(marker) : end_pos].strip()
-            segment_translations[segment["id"]] = translation
+            clean_translation = clean_markers_from_translation(translation)
+            segment_translations[segment["id"]] = clean_translation
         else:
             # 如果找不到标记，使用原文
             segment_translations[segment["id"]] = segment["text"]
 
     translation_result.segment_translations = segment_translations
+    # 清理标记
+
     return segment_translations
 
 
@@ -480,6 +484,8 @@ def clean_markers_from_translation(translation: str) -> str:
 
     # 移除所有【数字】格式的标记
     clean_text = re.sub(r"【\d+】", "", translation)
+    # 移除[] 标记
+    clean_text = re.sub(r"\[.*?\]", "", translation)
     # 移除多余空格
     clean_text = re.sub(r"\s+", " ", clean_text).strip()
     return clean_text
@@ -561,7 +567,9 @@ def create_json_result(
 
     # 构造句子结构
     sentence_list = []
-
+    print("---Json处理---")
+    print(f"传过来的翻译: {full_translation}")
+    print("---开始处理---")
     for i, segment in enumerate(segments):
         # 获取翻译
         translation = segment_translations.get(segment["id"], "")
@@ -631,7 +639,6 @@ def create_json_result(
         total_duration = len(recognized_text) * 200
 
     print(f"总时长计算结果: {total_duration} 毫秒")
-    print(f"传过来的翻译: {full_translation}")
 
     # 构造JSON结构
     result = {

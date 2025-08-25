@@ -6,5 +6,5 @@
 
 ### Description
 
-
+..\dify.exe plugin package ..\xunfei-mandarin-asr-translate
 

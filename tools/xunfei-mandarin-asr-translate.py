@@ -36,6 +36,7 @@ def xunfei_mandarin_asr_translate(audio_file: str, language: str = "none") -> tu
     try:
         recognition_result = speech_to_text(audio_file, language)
     except Exception as e:
+        logger.error("语音识别失败 error: %s", str(e))
         return "", {}, f"语音识别失败: {str(e)}"
 
     # 执行文本翻译
@@ -46,6 +47,7 @@ def xunfei_mandarin_asr_translate(audio_file: str, language: str = "none") -> tu
         )
     except Exception as e:
         segment_translations = {}
+        logger.error("文本翻译失败 error: %s", str(e))
         return "", {}, f"文本翻译失败: {str(e)}"
 
     # 如果翻译失败，使用原文作为翻译结果
